@@ -1,29 +1,29 @@
-from flask import Flask, request, jsonify
+from flask import Flask, render_template, request, jsonify
 import pandas as pd
 import pickle
+from flask_cors import CORS
 
-# Load the trained model and column structure
-model = pickle.load(open("./House_Price_Prediction_Model.pickle", "rb"))
-X_columns = pickle.load(open("./X_columns.pickle", "rb"))
+# Load the model and column structure
+model = pickle.load(open("House_Price_Prediction_Model.pickle", "rb"))
+X_columns = pickle.load(open("X_columns.pickle", "rb"))
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='../Client',static_folder='../client/static')  # tells Flask where to find App.html
+CORS(app, origins=["*"], supports_credentials=True)  # Be restrictive in prod
 
-# Simple test route
-@app.route('/hello', methods=['GET'])
-def hello():
-    return "Hi from Flask!"
+@app.route('/')
+def index():
+    return render_template('App.html')  # Looks in 'Client/App.html'
 
-# Route for prediction
+
 @app.route('/predict', methods=['POST'])
 def predict_route():
     try:
         data = request.get_json()
-        return predict(data)
+        return make_prediction(data)
     except Exception as e:
         return jsonify({'error': str(e)})
 
-# Core prediction logic
-def predict(data, test=False):
+def make_prediction(data):
     try:
         Area = data['Area']
         Bedrooms = data['Bedrooms']
@@ -34,10 +34,8 @@ def predict(data, test=False):
         Condition = data['Condition']
         Garage = data['Garage']
 
-        # Calculate Decade
         Decade = (YearBuilt // 10) * 10
 
-        # Initialize input DataFrame with default values
         input_data = pd.DataFrame({
             'Area': [Area],
             'Bedrooms': [Bedrooms],
@@ -57,47 +55,16 @@ def predict(data, test=False):
             'Garage_Yes': [0]
         })
 
-        # Set one-hot encoded values
         input_data[f'Location_{Location}'] = 1
         input_data[f'Condition_{Condition}'] = 1
         input_data[f'Garage_{Garage}'] = 1
 
-        # Reorder columns to match training set
         input_data = input_data[X_columns]
 
-        # Make prediction
         predicted_price = model.predict(input_data)[0]
-
-        if test:
-            return {'predicted_price': round(predicted_price, 2)}
-        else:
-            return jsonify({'predicted_price': round(predicted_price, 2)})
-
+        return jsonify({'predicted_price': round(predicted_price, 2)})
     except Exception as e:
-        if test:
-            return {'error': str(e)}
-        else:
-            return jsonify({'error': str(e)})
+        return jsonify({'error': str(e)})
 
-
-# Run server or test manually
 if __name__ == "__main__":
-    test_mode = True  # Change to False to run Flask server
-
-    if test_mode:
-        # Manual testing
-        test_data = {
-            "Area": 2400,
-            "Bedrooms": 3,
-            "Bathrooms": 2,
-            "Floors": 2,
-            "YearBuilt": 2008,
-            "Location": "Urban",
-            "Condition": "Good",
-            "Garage": "Yes"
-        }
-        result = predict(test_data, test=True)
-        print("Test Prediction Output:", result)
-    else:
-        print("Starting Python Flask Server For House Price Prediction...")
-        app.run(debug=True)
+    app.run(debug=True)

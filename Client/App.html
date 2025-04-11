@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>House Price Prediction</title>
+  <!-- CSS: Flask static folder -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='App.css') }}">
+  
+  <!-- jQuery CDN -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <!-- JS: Also serve via static -->
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+
+  <div class="form-container">
+    <h2>House Price Prediction</h2>
+    <form id="predictForm" onsubmit="predictPrice(); return false;">
+      <!-- Section 1 -->
+      <div class="form-group-section">
+        <div class="form-group">
+          <label>Area (sq ft)</label>
+          <input type="number" id="area" required>
+        </div>
+        <div class="form-group">
+          <label>Bedrooms</label>
+          <input type="number" id="bedrooms" required>
+        </div>
+      </div>
+
+      <!-- Section 2 -->
+      <div class="form-group-section">
+        <div class="form-group">
+          <label>Bathrooms</label>
+          <input type="number" id="bathrooms" required>
+        </div>
+        <div class="form-group">
+          <label>Floors</label>
+          <input type="number" id="floors" required>
+        </div>
+      </div>
+
+      <!-- Section 3 -->
+      <div class="form-group-section">
+        <div class="form-group">
+          <label>Year Built</label>
+          <input type="number" id="yearBuilt" required>
+        </div>
+        <div class="form-group">
+          <label>Location</label>
+          <select id="location" required>
+            <option value="Urban">Urban</option>
+            <option value="Suburban">Suburban</option>
+            <option value="Rural">Rural</option>
+            <option value="Downtown">Downtown</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Section 4 -->
+      <div class="form-group-section">
+        <div class="form-group">
+          <label>Condition</label>
+          <select id="condition" required>
+            <option value="Excellent">Excellent</option>
+            <option value="Good">Good</option>
+            <option value="Fair">Fair</option>
+            <option value="Poor">Poor</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Garage</label>
+          <select id="garage" required>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+        </div>
+      </div>
+
+      <button type="submit" id="predictButton">Predict Price</button>
+      <div id="result"></div>
+    </form>
+  </div>
+
+</body>
+</html>
