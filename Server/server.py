@@ -2,33 +2,29 @@ from flask import Flask, request, jsonify
 import pandas as pd
 import pickle
 
-# Load the trained model and feature columns
-try:
-    model = pickle.load(open("../Model/House_Price_Prediction_Model.pickle", "rb"))
-    X_columns = pickle.load(open("X_columns.pickle", "rb"))  # Should match the training columns exactly
-except Exception as e:
-    raise Exception(f"Model loading failed: {e}")
+# Load the trained model and column structure
+model = pickle.load(open("./House_Price_Prediction_Model.pickle", "rb"))
+X_columns = pickle.load(open("./X_columns.pickle", "rb"))
 
 app = Flask(__name__)
 
-# Test route
+# Simple test route
 @app.route('/hello', methods=['GET'])
 def hello():
     return "Hi from Flask!"
 
-# Prediction route
+# Route for prediction
 @app.route('/predict', methods=['POST'])
-def predict():
+def predict_route():
     try:
-        data = request.get_json(force=True)  # Ensures JSON even if header is incorrect
+        data = request.get_json()
+        return predict(data)
+    except Exception as e:
+        return jsonify({'error': str(e)})
 
-        # Validate required keys
-        required_keys = ['Area', 'Bedrooms', 'Bathrooms', 'Floors', 'YearBuilt', 'Location', 'Condition', 'Garage']
-        missing_keys = [key for key in required_keys if key not in data]
-        if missing_keys:
-            return jsonify({'error': f'Missing keys in request: {missing_keys}'}), 400
-
-        # Extract values
+# Core prediction logic
+def predict(data, test=False):
+    try:
         Area = data['Area']
         Bedrooms = data['Bedrooms']
         Bathrooms = data['Bathrooms']
@@ -38,36 +34,70 @@ def predict():
         Condition = data['Condition']
         Garage = data['Garage']
 
-        # Create the input DataFrame with all expected one-hot columns
-        input_data = pd.DataFrame(columns=X_columns)
-        input_data.loc[0] = [0] * len(X_columns)  # Initialize with zeros
+        # Calculate Decade
+        Decade = (YearBuilt // 10) * 10
 
-        # Set base numeric features
-        input_data.at[0, 'Area'] = Area
-        input_data.at[0, 'Bedrooms'] = Bedrooms
-        input_data.at[0, 'Bathrooms'] = Bathrooms
-        input_data.at[0, 'Floors'] = Floors
-        input_data.at[0, 'YearBuilt'] = YearBuilt
+        # Initialize input DataFrame with default values
+        input_data = pd.DataFrame({
+            'Area': [Area],
+            'Bedrooms': [Bedrooms],
+            'Bathrooms': [Bathrooms],
+            'Floors': [Floors],
+            'YearBuilt': [YearBuilt],
+            'Decade': [Decade],
+            'Location_Downtown': [0],
+            'Location_Rural': [0],
+            'Location_Suburban': [0],
+            'Location_Urban': [0],
+            'Condition_Excellent': [0],
+            'Condition_Fair': [0],
+            'Condition_Good': [0],
+            'Condition_Poor': [0],
+            'Garage_No': [0],
+            'Garage_Yes': [0]
+        })
 
-        # One-hot encoded values - only if the column exists
-        loc_col = f'Location_{Location}'
-        cond_col = f'Condition_{Condition}'
-        garage_col = f'Garage_{Garage}'
+        # Set one-hot encoded values
+        input_data[f'Location_{Location}'] = 1
+        input_data[f'Condition_{Condition}'] = 1
+        input_data[f'Garage_{Garage}'] = 1
 
-        for col in [loc_col, cond_col, garage_col]:
-            if col in input_data.columns:
-                input_data.at[0, col] = 1
-            else:
-                print(f"Warning: Column '{col}' not found in model input columns.")
+        # Reorder columns to match training set
+        input_data = input_data[X_columns]
 
-        # Predict the price
+        # Make prediction
         predicted_price = model.predict(input_data)[0]
 
-        return jsonify({'predicted_price': round(predicted_price, 2)})
+        if test:
+            return {'predicted_price': round(predicted_price, 2)}
+        else:
+            return jsonify({'predicted_price': round(predicted_price, 2)})
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        if test:
+            return {'error': str(e)}
+        else:
+            return jsonify({'error': str(e)})
 
+
+# Run server or test manually
 if __name__ == "__main__":
-    print("Starting Flask server for House Price Prediction...")
-    app.run(debug=True)
+    test_mode = True  # Change to False to run Flask server
+
+    if test_mode:
+        # Manual testing
+        test_data = {
+            "Area": 2400,
+            "Bedrooms": 3,
+            "Bathrooms": 2,
+            "Floors": 2,
+            "YearBuilt": 2008,
+            "Location": "Urban",
+            "Condition": "Good",
+            "Garage": "Yes"
+        }
+        result = predict(test_data, test=True)
+        print("Test Prediction Output:", result)
+    else:
+        print("Starting Python Flask Server For House Price Prediction...")
+        app.run(debug=True)
